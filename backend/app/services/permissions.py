@@ -4,47 +4,48 @@
 ROLES = {
     'admin': {
         'name': '系统管理员',
-        'description': '拥有系统所有权限',
+        'description': '维护货物标题、用户管理、系统配置',
         'permissions': [
             'user:read', 'user:write', 'user:delete',
             'product:read', 'product:write', 'product:delete',
-            'inventory:read', 'inventory:write', 'inventory:delete',
-            'warehouse:read', 'warehouse:write', 'warehouse:delete',
+            'inventory:read', 'inventory:write',
+            'warehouse:read', 'warehouse:write',
             'requisition:read', 'requisition:write', 'requisition:delete',
             'approval:read', 'approval:write',
+            'purchase:read', 'purchase:write', 'purchase:delete',
             'report:read', 'report:write',
             'system:read', 'system:write'
         ]
     },
-    'warehouse_manager': {
-        'name': '仓库管理员',
-        'description': '管理仓库和库存数量',
+    'applicant': {
+        'name': '申请人',
+        'description': '提交领用申请、查看自己的申请',
         'permissions': [
             'product:read',
-            'inventory:read', 'inventory:write',
-            'warehouse:read',
-            'requisition:read',
-            'report:read'
+            'inventory:read',
+            'requisition:read', 'requisition:write', 'requisition:submit'
         ]
     },
     'approver': {
         'name': '审批人',
-        'description': '审批领用申请',
+        'description': '审批申请、查看审批历史',
         'permissions': [
             'product:read',
             'inventory:read',
             'requisition:read',
-            'approval:read', 'approval:write',
-            'report:read'
+            'approval:read', 'approval:write'
         ]
     },
-    'user': {
-        'name': '普通用户',
-        'description': '提交领用申请',
+    'warehouse_manager': {
+        'name': '仓库管理员',
+        'description': '维护库存数量、发货确认、采购入库',
         'permissions': [
             'product:read',
-            'inventory:read',
-            'requisition:read', 'requisition:write'
+            'inventory:read', 'inventory:write', 'inventory:ship',
+            'warehouse:read',
+            'requisition:read', 'requisition:ship',
+            'purchase:read', 'purchase:write', 'purchase:receive',
+            'report:read'
         ]
     }
 }
@@ -70,3 +71,28 @@ def get_role_name(role: str) -> str:
     if role not in ROLES:
         return role
     return ROLES[role]['name']
+
+
+def can_submit_requisition(role: str) -> bool:
+    """是否可以提交申请"""
+    return has_permission(role, 'requisition:submit')
+
+
+def can_approve_requisition(role: str) -> bool:
+    """是否可以审批申请"""
+    return has_permission(role, 'approval:write')
+
+
+def can_ship_requisition(role: str) -> bool:
+    """是否可以发货确认"""
+    return has_permission(role, 'requisition:ship')
+
+
+def can_manage_purchase(role: str) -> bool:
+    """是否可以管理采购"""
+    return has_permission(role, 'purchase:write')
+
+
+def can_receive_purchase(role: str) -> bool:
+    """是否可以采购入库"""
+    return has_permission(role, 'purchase:receive')

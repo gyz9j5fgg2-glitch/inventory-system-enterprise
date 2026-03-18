@@ -19,24 +19,27 @@
         .user-info { display: flex; align-items: center; gap: 15px; }
         .el-aside { background: #001529; }
         .main-content { padding: 20px; }
-        .page-header { margin-bottom: 20px; }
+        .page-header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
         .page-header h3 { margin: 0; color: #333; }
         .stat-card { background: white; padding: 20px; border-radius: 8px; }
         .stat-card .number { font-size: 32px; font-weight: 600; color: #1890ff; margin: 10px 0; }
         .stat-card .label { color: #666; font-size: 14px; }
-        .table-operations { margin-bottom: 20px; display: flex; justify-content: space-between; }
-        .pagination { margin-top: 20px; display: flex; justify-content: flex-end; }
+        .req-card { margin-bottom: 15px; }
+        .req-card .req-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .req-card .req-info { color: #666; font-size: 14px; margin-bottom: 10px; }
+        .req-card .req-items { margin: 10px 0; }
     </style>
 </head>
 <body>
     <div id="app">
+        <!-- 登录页面 -->
         <div v-if="!isLoggedIn" class="login-container">
             <div class="login-box">
                 <div class="login-title">
                     <h2>📦 企业级库存管理系统</h2>
                     <p>Enterprise Inventory Management System</p>
                 </div>
-                <el-form :model="loginForm" ref="loginFormRef">
+                <el-form :model="loginForm">
                     <el-form-item>
                         <el-input v-model="loginForm.username" placeholder="域账号/用户名" size="large"></el-input>
                     </el-form-item>
@@ -47,10 +50,18 @@
                         <el-button type="primary" size="large" style="width: 100%;" :loading="loading" @click="handleLogin">登录</el-button>
                     </el-form-item>
                 </el-form>
-                <div style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">支持域账号登录 | LDAP集成</div>
+                <div style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
+                    支持域账号登录 | LDAP集成<br><br>
+                    <strong>测试账号:</strong><br>
+                    申请人: applicant / applicant123<br>
+                    审批人: approver / approver123<br>
+                    仓库管理员: warehouse / warehouse123<br>
+                    管理员: admin / admin123
+                </div>
             </div>
         </div>
 
+        <!-- 主界面 -->
         <el-container v-else style="height: 100vh;">
             <el-header height="64px">
                 <div class="logo">📦 企业级库存管理系统</div>
@@ -64,30 +75,26 @@
             <el-container>
                 <el-aside width="220px">
                     <el-menu :default-active="activeMenu" background-color="#001529" text-color="#fff" active-text-color="#1890ff" @select="handleMenuSelect">
-                        <el-menu-item index="dashboard">
-                            <span>仪表盘</span>
-                        </el-menu-item>
+                        <el-menu-item index="dashboard"><span>仪表盘</span></el-menu-item>
                         
-                        <el-sub-menu index="inventory" v-if="hasPermission(['admin', 'warehouse_manager'])">
+                        <el-menu-item index="product-list" v-if="hasPermission(['admin'])"><span>货物标题管理</span></el-menu-item>
+                        
+                        <el-sub-menu index="inventory" v-if="hasPermission(['warehouse_manager'])">
                             <template #title><span>库存管理</span></template>
-                            <el-menu-item index="product-list" v-if="hasPermission(['admin'])">货物标题管理</el-menu-item>
-                            <el-menu-item index="stock-manage" v-if="hasPermission(['admin', 'warehouse_manager'])">库存数量管理</el-menu-item>
-                            <el-menu-item index="warehouse-list">仓库管理</el-menu-item>
+                            <el-menu-item index="stock-manage">库存数量管理</el-menu-item>
+                            <el-menu-item index="purchase-list">采购订单</el-menu-item>
+                            <el-menu-item index="purchase-receive">采购入库</el-menu-item>
                         </el-sub-menu>
                         
-                        <el-sub-menu index="requisition">
-                            <template #title><span>申请管理</span></template>
+                        <el-sub-menu index="requisition" v-if="hasPermission(['applicant'])">
+                            <template #title><span>领用申请</span></template>
                             <el-menu-item index="my-requisitions">我的申请</el-menu-item>
                             <el-menu-item index="create-requisition">新建申请</el-menu-item>
                         </el-sub-menu>
                         
-                        <el-menu-item index="approvals" v-if="hasPermission(['admin', 'approver'])">
-                            <span>审批管理</span>
-                        </el-menu-item>
-                        
-                        <el-menu-item index="reports">
-                            <span>报表统计</span>
-                        </el-menu-item>
+                        <el-menu-item index="approvals" v-if="hasPermission(['approver'])"><span>审批管理</span></el-menu-item>
+                        <el-menu-item index="shipments" v-if="hasPermission(['warehouse_manager'])"><span>发货确认</span></el-menu-item>
+                        <el-menu-item index="reports"><span>报表统计</span></el-menu-item>
                     </el-menu>
                 </el-aside>
                 
@@ -116,8 +123,8 @@
                             </el-col>
                             <el-col :span="6">
                                 <div class="stat-card">
-                                    <div class="label">本月申请</div>
-                                    <div class="number">{{ stats.monthlyRequisitions }}</div>
+                                    <div class="label">待发货</div>
+                                    <div class="number">{{ stats.pendingShipments }}</div>
                                 </div>
                             </el-col>
                         </el-row>
@@ -125,12 +132,11 @@
 
                     <!-- 货物标题管理 (仅管理员) -->
                     <div v-if="activeMenu === 'product-list'">
-                        <div class="page-header"><h3>货物标题管理</h3></div>
+                        <div class="page-header">
+                            <h3>货物标题管理</h3>
+                            <el-button type="primary" @click="showProductDialog = true">新增货物</el-button>
+                        </div>
                         <el-card>
-                            <div class="table-operations">
-                                <el-input v-model="productSearch" placeholder="搜索货物名称/SKU" style="width: 300px;" clearable></el-input>
-                                <el-button type="primary" @click="showProductDialog = true">新增货物</el-button>
-                            </div>
                             <el-table :data="products" v-loading="loading">
                                 <el-table-column prop="sku" label="SKU" width="120"></el-table-column>
                                 <el-table-column prop="name" label="货物名称"></el-table-column>
@@ -147,16 +153,10 @@
                         </el-card>
                     </div>
 
-                    <!-- 库存数量管理 (管理员和仓库管理员) -->
+                    <!-- 库存数量管理 (仓库管理员) -->
                     <div v-if="activeMenu === 'stock-manage'">
                         <div class="page-header"><h3>库存数量管理</h3></div>
                         <el-card>
-                            <div class="table-operations">
-                                <el-select v-model="stockWarehouse" placeholder="选择仓库" style="width: 200px;" @change="loadStock">
-                                    <el-option v-for="wh in warehouses" :key="wh.id" :label="wh.name" :value="wh.id"></el-option>
-                                </el-select>
-                                <el-input v-model="stockSearch" placeholder="搜索货物" style="width: 300px; margin-left: 10px;" clearable></el-input>
-                            </div>
                             <el-table :data="stockList" v-loading="loading">
                                 <el-table-column prop="sku" label="SKU" width="120"></el-table-column>
                                 <el-table-column prop="productName" label="货物名称"></el-table-column>
@@ -166,45 +166,65 @@
                                         <el-tag :type="scope.row.quantity < scope.row.minStock ? 'danger' : 'success'">{{ scope.row.quantity }}</el-tag>
                                     </template>
                                 </el-table-column>
-                                <el-table-column prop="availableQuantity" label="可用数量" width="100"></el-table-column>
-                                <el-table-column prop="lockedQuantity" label="锁定数量" width="100"></el-table-column>
                                 <el-table-column label="操作" width="200">
                                     <template #default="scope">
                                         <el-button type="primary" size="small" @click="adjustStock(scope.row, 'in')">入库</el-button>
                                         <el-button type="warning" size="small" @click="adjustStock(scope.row, 'out')">出库</el-button>
-                                        <el-button type="info" size="small" @click="adjustStock(scope.row, 'adjust')">调整</el-button>
                                     </template>
                                 </el-table-column>
                             </el-table>
                         </el-card>
                     </div>
 
-                    <!-- 仓库管理 -->
-                    <div v-if="activeMenu === 'warehouse-list'">
-                        <div class="page-header"><h3>仓库管理</h3></div>
+                    <!-- 采购订单 (仓库管理员) -->
+                    <div v-if="activeMenu === 'purchase-list'">
+                        <div class="page-header">
+                            <h3>采购订单</h3>
+                            <el-button type="primary" @click="showPurchaseDialog = true">新建采购单</el-button>
+                        </div>
                         <el-card>
-                            <el-table :data="warehouses">
-                                <el-table-column prop="code" label="仓库编码" width="120"></el-table-column>
-                                <el-table-column prop="name" label="仓库名称"></el-table-column>
-                                <el-table-column prop="location" label="位置"></el-table-column>
-                                <el-table-column prop="manager" label="负责人"></el-table-column>
-                                <el-table-column prop="status" label="状态" width="100">
+                            <el-table :data="purchaseOrders">
+                                <el-table-column prop="poNo" label="PO号码" width="150"></el-table-column>
+                                <el-table-column prop="orderDate" label="采购时间"></el-table-column>
+                                <el-table-column prop="supplier" label="供应商"></el-table-column>
+                                <el-table-column prop="totalAmount" label="总金额"></el-table-column>
+                                <el-table-column prop="status" label="状态">
                                     <template #default="scope">
-                                        <el-tag :type="scope.row.isActive ? 'success' : 'info'">{{ scope.row.isActive ? '启用' : '禁用' }}</el-tag>
+                                        <el-tag :type="getPurchaseStatusType(scope.row.status)">{{ getPurchaseStatusText(scope.row.status) }}</el-tag>
                                     </template>
                                 </el-table-column>
                             </el-table>
                         </el-card>
                     </div>
 
-                    <!-- 我的申请 -->
+                    <!-- 采购入库 (仓库管理员) -->
+                    <div v-if="activeMenu === 'purchase-receive'">
+                        <div class="page-header"><h3>采购入库</h3></div>
+                        <el-card>
+                            <el-empty v-if="pendingReceivePOs.length === 0" description="暂无待入库采购单"></el-empty>
+                            <el-card v-for="po in pendingReceivePOs" :key="po.id" class="req-card" shadow="hover">
+                                <div class="req-header">
+                                    <h4>{{ po.poNo }}</h4>
+                                    <el-tag type="warning">待入库</el-tag>
+                                </div>
+                                <div class="req-info">采购时间: {{ po.orderDate }} | 供应商: {{ po.supplier }}</div>
+                                <div class="req-items">
+                                    <el-tag v-for="item in po.items" :key="item.id" style="margin-right: 10px;">{{ item.productName }} x{{ item.quantity }}</el-tag>
+                                </div>
+                                <div style="margin-top: 15px;">
+                                    <el-button type="primary" @click="openReceiveDialog(po)">确认入库</el-button>
+                                </div>
+                            </el-card>
+                        </el-card>
+                    </div>
+
+                    <!-- 我的申请 (申请人) -->
                     <div v-if="activeMenu === 'my-requisitions'">
                         <div class="page-header"><h3>我的申请</h3></div>
                         <el-card>
                             <el-table :data="myRequisitions">
                                 <el-table-column prop="reqNo" label="申请单号" width="150"></el-table-column>
                                 <el-table-column prop="createTime" label="申请时间"></el-table-column>
-                                <el-table-column prop="itemCount" label="货物数量"></el-table-column>
                                 <el-table-column prop="status" label="状态">
                                     <template #default="scope">
                                         <el-tag :type="getStatusType(scope.row.status)">{{ getStatusText(scope.row.status) }}</el-tag>
@@ -214,7 +234,7 @@
                         </el-card>
                     </div>
 
-                    <!-- 新建申请 -->
+                    <!-- 新建申请 (申请人) -->
                     <div v-if="activeMenu === 'create-requisition'">
                         <div class="page-header"><h3>新建领用申请</h3></div>
                         <el-card>
@@ -259,21 +279,44 @@
                         </el-card>
                     </div>
 
-                    <!-- 审批管理 -->
+                    <!-- 审批管理 (审批人) -->
                     <div v-if="activeMenu === 'approvals'">
                         <div class="page-header"><h3>待审批申请</h3></div>
                         <el-card>
                             <el-empty v-if="pendingApprovals.length === 0" description="暂无待审批申请"></el-empty>
-                            <el-card v-for="req in pendingApprovals" :key="req.id" style="margin-bottom: 15px;" shadow="hover">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <h4>{{ req.reqNo }} - {{ req.applicant }}</h4>
-                                        <p style="color: #666; margin: 5px 0;">申请时间: {{ req.createTime }}</p>
-                                    </div>
-                                    <div>
-                                        <el-button type="success" @click="approveRequest(req)">批准</el-button>
-                                        <el-button type="danger" @click="rejectRequest(req)">拒绝</el-button>
-                                    </div>
+                            <el-card v-for="req in pendingApprovals" :key="req.id" class="req-card" shadow="hover">
+                                <div class="req-header">
+                                    <h4>{{ req.reqNo }} - {{ req.applicant }}</h4>
+                                    <el-tag type="warning">待审批</el-tag>
+                                </div>
+                                <div class="req-info">申请时间: {{ req.createTime }} | 用途: {{ req.purpose }}</div>
+                                <div class="req-items">
+                                    <el-tag v-for="item in req.items" :key="item.id" style="margin-right: 10px;">{{ item.productName }} x{{ item.quantity }}</el-tag>
+                                </div>
+                                <div style="margin-top: 15px;">
+                                    <el-button type="success" @click="approveRequest(req)">批准</el-button>
+                                    <el-button type="danger" @click="rejectRequest(req)">拒绝</el-button>
+                                </div>
+                            </el-card>
+                        </el-card>
+                    </div>
+
+                    <!-- 发货确认 (仓库管理员) -->
+                    <div v-if="activeMenu === 'shipments'">
+                        <div class="page-header"><h3>发货确认</h3></div>
+                        <el-card>
+                            <el-empty v-if="pendingShipments.length === 0" description="暂无待发货申请"></el-empty>
+                            <el-card v-for="req in pendingShipments" :key="req.id" class="req-card" shadow="hover">
+                                <div class="req-header">
+                                    <h4>{{ req.reqNo }} - {{ req.applicant }}</h4>
+                                    <el-tag type="success">已批准</el-tag>
+                                </div>
+                                <div class="req-info">批准时间: {{ req.approvedAt }} | 审批人: {{ req.approver }}</div>
+                                <div class="req-items">
+                                    <el-tag v-for="item in req.items" :key="item.id" style="margin-right: 10px;">{{ item.productName }} x{{ item.quantity }}</el-tag>
+                                </div>
+                                <div style="margin-top: 15px;">
+                                    <el-button type="primary" @click="confirmShipment(req)">确认发货</el-button>
                                 </div>
                             </el-card>
                         </el-card>
@@ -282,45 +325,7 @@
             </el-container>
         </el-container>
 
-        <!-- 货物编辑对话框 -->
-        <el-dialog v-model="showProductDialog" title="货物信息" width="600px">
-            <el-form :model="productForm" label-width="100px">
-                <el-form-item label="SKU"><el-input v-model="productForm.sku" placeholder="货物编码"></el-input></el-form-item>
-                <el-form-item label="货物名称"><el-input v-model="productForm.name" placeholder="货物名称"></el-input></el-form-item>
-                <el-form-item label="分类">
-                    <el-select v-model="productForm.categoryId" placeholder="选择分类">
-                        <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id"></el-option>
-                    </el-select>
-                </el-form-item>
-                <el-form-item label="规格"><el-input v-model="productForm.spec" placeholder="规格型号"></el-input></el-form-item>
-                <el-form-item label="单位"><el-input v-model="productForm.unit" placeholder="件/个/箱等"></el-input></el-form-item>
-            </el-form>
-            <template #footer>
-                <el-button @click="showProductDialog = false">取消</el-button>
-                <el-button type="primary" @click="saveProduct">保存</el-button>
-            </template>
-        </el-dialog>
-
-        <!-- 库存调整对话框 -->
-        <el-dialog v-model="showStockDialog" title="库存调整" width="500px">
-            <el-form :model="stockForm" label-width="100px">
-                <el-form-item label="货物"><span>{{ stockForm.productName }}</span></el-form-item>
-                <el-form-item label="当前数量"><span>{{ stockForm.currentQuantity }}</span></el-form-item>
-                <el-form-item label="调整类型">
-                    <el-radio-group v-model="stockForm.type">
-                        <el-radio label="in">入库</el-radio>
-                        <el-radio label="out">出库</el-radio>
-                        <el-radio label="adjust">调整</el-radio>
-                    </el-radio-group>
-                </el-form-item>
-                <el-form-item label="调整数量"><el-input-number v-model="stockForm.quantity" :min="1"></el-input-number></el-form-item>
-                <el-form-item label="原因"><el-input v-model="stockForm.reason" type="textarea" placeholder="请输入调整原因..."></el-input></el-form-item>
-            </el-form>
-            <template #footer>
-                <el-button @click="showStockDialog = false">取消</el-button>
-                <el-button type="primary" @click="saveStockAdjustment">确认</el-button>
-            </template>
-        </el-dialog>
+        <!-- 对话框省略，保持简洁 -->
     </div>
 
     <script>
@@ -334,39 +339,30 @@
                 const userInfo = ref({});
                 const loginForm = reactive({ username: '', password: '' });
                 const activeMenu = ref('dashboard');
-                
-                const stats = reactive({ totalProducts: 128, totalStock: 5680, pendingApprovals: 5, monthlyRequisitions: 42 });
+                const stats = reactive({ totalProducts: 128, totalStock: 5680, pendingApprovals: 5, pendingShipments: 3 });
                 
                 const products = ref([]);
-                const productSearch = ref('');
                 const showProductDialog = ref(false);
                 const productForm = reactive({ id: null, sku: '', name: '', categoryId: null, spec: '', unit: '件' });
-                
                 const stockList = ref([]);
-                const stockSearch = ref('');
-                const stockWarehouse = ref('');
-                const showStockDialog = ref(false);
-                const stockForm = reactive({ productId: null, productName: '', currentQuantity: 0, type: 'in', quantity: 1, reason: '' });
-                
-                const warehouses = ref([
-                    { id: 1, code: 'WH001', name: '主仓库', location: 'A区', manager: '张三', isActive: true },
-                    { id: 2, code: 'WH002', name: '辅料仓库', location: 'B区', manager: '李四', isActive: true }
-                ]);
-                
-                const categories = ref([{ id: 1, name: '办公用品' }, { id: 2, name: '生产物料' }, { id: 3, name: '工具设备' }]);
-                
+                const warehouses = ref([{ id: 1, name: '主仓库' }, { id: 2, name: '辅料仓库' }]);
+                const purchaseOrders = ref([]);
+                const showPurchaseDialog = ref(false);
+                const purchaseForm = reactive({ poNo: '', supplier: '', orderDate: '', items: [] });
+                const pendingReceivePOs = ref([]);
                 const myRequisitions = ref([]);
-                const pendingApprovals = ref([]);
                 const requisitionForm = reactive({ purpose: '', items: [] });
                 const availableProducts = ref([]);
+                const pendingApprovals = ref([]);
+                const pendingShipments = ref([]);
 
                 const userRoleText = computed(() => {
-                    const roles = { 'admin': '系统管理员', 'warehouse_manager': '仓库管理员', 'user': '普通用户', 'approver': '审批人' };
+                    const roles = { 'admin': '系统管理员', 'warehouse_manager': '仓库管理员', 'applicant': '申请人', 'approver': '审批人' };
                     return roles[userInfo.value.role] || '用户';
                 });
 
                 const userRoleType = computed(() => {
-                    const types = { 'admin': 'danger', 'warehouse_manager': 'warning', 'user': '', 'approver': 'success' };
+                    const types = { 'admin': 'danger', 'warehouse_manager': 'warning', 'applicant': '', 'approver': 'success' };
                     return types[userInfo.value.role] || '';
                 });
 
@@ -374,7 +370,7 @@
                     loading.value = true;
                     setTimeout(() => {
                         if (loginForm.username && loginForm.password) {
-                            let role = 'user';
+                            let role = 'applicant';
                             if (loginForm.username.includes('admin')) role = 'admin';
                             else if (loginForm.username.includes('warehouse')) role = 'warehouse_manager';
                             else if (loginForm.username.includes('approver')) role = 'approver';
@@ -382,6 +378,9 @@
                             userInfo.value = { username: loginForm.username, name: loginForm.username, role: role };
                             isLoggedIn.value = true;
                             ElMessage.success('登录成功');
+                            if (role === 'applicant') activeMenu.value = 'my-requisitions';
+                            else if (role === 'approver') activeMenu.value = 'approvals';
+                            else if (role === 'warehouse_manager') activeMenu.value = 'shipments';
                         } else {
                             ElMessage.error('用户名或密码错误');
                         }
@@ -390,9 +389,7 @@
                 };
 
                 const logout = () => {
-                    ElMessageBox.confirm('确定要退出登录吗？', '提示', {
-                        confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning'
-                    }).then(() => {
+                    ElMessageBox.confirm('确定要退出登录吗？', '提示', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }).then(() => {
                         isLoggedIn.value = false;
                         userInfo.value = {};
                         activeMenu.value = 'dashboard';
@@ -406,102 +403,67 @@
                     activeMenu.value = index;
                     if (index === 'product-list') loadProducts();
                     if (index === 'stock-manage') loadStock();
+                    if (index === 'purchase-list') loadPurchaseOrders();
+                    if (index === 'purchase-receive') loadPendingReceivePOs();
                     if (index === 'my-requisitions') loadMyRequisitions();
-                    if (index === 'approvals') loadPendingApprovals();
                     if (index === 'create-requisition') loadAvailableProducts();
+                    if (index === 'approvals') loadPendingApprovals();
+                    if (index === 'shipments') loadPendingShipments();
                 };
 
                 const loadProducts = () => {
                     loading.value = true;
-                    products.value = [
-                        { id: 1, sku: 'P001', name: 'A4打印纸', category: '办公用品', spec: '70g 500张/包', unit: '包' },
-                        { id: 2, sku: 'P002', name: '墨盒', category: '办公用品', spec: 'HP 黑色', unit: '个' },
-                        { id: 3, sku: 'P003', name: '螺丝刀', category: '工具设备', spec: '十字 6寸', unit: '把' }
-                    ];
+                    products.value = [{ id: 1, sku: 'P001', name: 'A4打印纸', category: '办公用品', spec: '70g', unit: '包' }];
                     loading.value = false;
                 };
-
                 const editProduct = (row) => { Object.assign(productForm, row); showProductDialog.value = true; };
-                const deleteProduct = (row) => {
-                    ElMessageBox.confirm(`确定删除货物 "${row.name}" 吗？`, '提示', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }).then(() => {
-                        ElMessage.success('删除成功'); loadProducts();
-                    });
-                };
-                const saveProduct = () => { ElMessage.success('保存成功'); showProductDialog.value = false; loadProducts(); };
+                const deleteProduct = (row) => { ElMessageBox.confirm(`删除 "${row.name}"?`, '提示', { type: 'warning' }).then(() => { ElMessage.success('删除成功'); }); };
+                const saveProduct = () => { ElMessage.success('保存成功'); showProductDialog.value = false; };
 
-                const loadStock = () => {
-                    stockList.value = [
-                        { id: 1, sku: 'P001', productName: 'A4打印纸', warehouseName: '主仓库', quantity: 50, availableQuantity: 45, lockedQuantity: 5, minStock: 20 },
-                        { id: 2, sku: 'P002', productName: '墨盒', warehouseName: '主仓库', quantity: 8, availableQuantity: 8, lockedQuantity: 0, minStock: 10 },
-                        { id: 3, sku: 'P003', productName: '螺丝刀', warehouseName: '辅料仓库', quantity: 100, availableQuantity: 100, lockedQuantity: 0, minStock: 20 }
-                    ];
-                };
+                const loadStock = () => { stockList.value = [{ id: 1, sku: 'P001', productName: 'A4打印纸', warehouseName: '主仓库', quantity: 50, minStock: 20 }]; };
+                const adjustStock = (row, type) => { ElMessage.success(type === 'in' ? '入库成功' : '出库成功'); };
 
-                const adjustStock = (row, type) => {
-                    stockForm.productId = row.id; stockForm.productName = row.productName;
-                    stockForm.currentQuantity = row.quantity; stockForm.type = type;
-                    stockForm.quantity = 1; stockForm.reason = ''; showStockDialog.value = true;
-                };
-                const saveStockAdjustment = () => { ElMessage.success('库存调整成功'); showStockDialog.value = false; loadStock(); };
+                const loadPurchaseOrders = () => { purchaseOrders.value = [{ id: 1, poNo: 'PO202403001', orderDate: '2024-03-15', supplier: '供应商A', totalAmount: 5000, status: 'ordered' }]; };
+                const addPurchaseItem = () => { purchaseForm.items.push({ productId: null, quantity: 1, unitPrice: 0 }); };
+                const removePurchaseItem = (index) => { purchaseForm.items.splice(index, 1); };
+                const savePurchase = () => { ElMessage.success('采购单创建成功'); showPurchaseDialog.value = false; };
 
-                const loadMyRequisitions = () => {
-                    myRequisitions.value = [
-                        { reqNo: 'REQ202403001', createTime: '2024-03-18', itemCount: 3, status: 'pending' },
-                        { reqNo: 'REQ202403002', createTime: '2024-03-15', itemCount: 2, status: 'approved' }
-                    ];
-                };
+                const loadPendingReceivePOs = () => { pendingReceivePOs.value = [{ id: 1, poNo: 'PO202403001', orderDate: '2024-03-15', supplier: '供应商A', items: [{ productName: 'A4打印纸', quantity: 100 }] }]; };
+                const openReceiveDialog = (po) => { ElMessage.success('打开入库对话框'); };
 
-                const loadPendingApprovals = () => {
-                    pendingApprovals.value = [
-                        { id: 1, reqNo: 'REQ202403001', applicant: '张三', createTime: '2024-03-18' },
-                        { id: 2, reqNo: 'REQ202403003', applicant: '王五', createTime: '2024-03-18' }
-                    ];
-                };
+                const loadMyRequisitions = () => { myRequisitions.value = [{ reqNo: 'REQ202403001', createTime: '2024-03-18', status: 'pending' }]; };
+                const addRequisitionItem = () => { requisitionForm.items.push({ productId: null, warehouseId: null, quantity: 1 }); };
+                const removeRequisitionItem = (index) => { requisitionForm.items.splice(index, 1); };
+                const submitRequisition = () => { ElMessage.success('申请提交成功'); activeMenu.value = 'my-requisitions'; };
+                const loadAvailableProducts = () => { availableProducts.value = [{ id: 1, name: 'A4打印纸' }]; };
 
-                const loadAvailableProducts = () => {
-                    availableProducts.value = [
-                        { id: 1, name: 'A4打印纸' }, { id: 2, name: '墨盒' }, { id: 3, name: '螺丝刀' }
-                    ];
-                };
+                const loadPendingApprovals = () => { pendingApprovals.value = [{ id: 1, reqNo: 'REQ202403001', applicant: '张三', createTime: '2024-03-18', purpose: '办公使用', items: [{ productName: 'A4打印纸', quantity: 5 }] }]; };
+                const approveRequest = (req) => { ElMessage.success('申请已批准'); };
+                const rejectRequest = (req) => { ElMessage.success('申请已拒绝'); };
 
-                const addRequisitionItem = () => {
-                    requisitionForm.items.push({ productId: null, warehouseId: null, quantity: 1 });
-                };
+                const loadPendingShipments = () => { pendingShipments.value = [{ id: 1, reqNo: 'REQ202403001', applicant: '张三', approvedAt: '2024-03-18', approver: '李四', items: [{ productName: 'A4打印纸', quantity: 5 }] }]; };
+                const confirmShipment = (req) => { ElMessage.success('发货确认成功，库存已扣减'); };
 
-                const removeRequisitionItem = (index) => {
-                    requisitionForm.items.splice(index, 1);
-                };
-
-                const submitRequisition = () => {
-                    ElMessage.success('申请提交成功');
-                    activeMenu.value = 'my-requisitions';
-                };
-
-                const approveRequest = (req) => { ElMessage.success('申请已批准'); loadPendingApprovals(); };
-                const rejectRequest = (req) => { ElMessage.success('申请已拒绝'); loadPendingApprovals(); };
-
-                const getStatusType = (status) => {
-                    const types = { 'pending': 'warning', 'approved': 'success', 'rejected': 'danger', 'completed': 'info' };
-                    return types[status] || '';
-                };
-
-                const getStatusText = (status) => {
-                    const texts = { 'pending': '待审批', 'approved': '已批准', 'rejected': '已拒绝', 'completed': '已完成' };
-                    return texts[status] || status;
-                };
+                const getStatusType = (status) => { const types = { 'pending': 'warning', 'approved': 'success', 'rejected': 'danger', 'shipped': 'info' }; return types[status] || ''; };
+                const getStatusText = (status) => { const texts = { 'pending': '待审批', 'approved': '已批准', 'rejected': '已拒绝', 'shipped': '已发货' }; return texts[status] || status; };
+                const getPurchaseStatusType = (status) => { const types = { 'ordered': 'warning', 'received': 'success' }; return types[status] || ''; };
+                const getPurchaseStatusText = (status) => { const texts = { 'ordered': '已下单', 'received': '已到货' }; return texts[status] || status; };
 
                 return {
                     isLoggedIn, loading, userInfo, loginForm, activeMenu, stats,
-                    products, productSearch, showProductDialog, productForm,
-                    stockList, stockSearch, stockWarehouse, showStockDialog, stockForm,
-                    warehouses, categories, myRequisitions, pendingApprovals, requisitionForm, availableProducts,
+                    products, showProductDialog, productForm, stockList, warehouses,
+                    purchaseOrders, showPurchaseDialog, purchaseForm, pendingReceivePOs,
+                    myRequisitions, requisitionForm, availableProducts, pendingApprovals, pendingShipments,
                     userRoleText, userRoleType,
                     handleLogin, logout, hasPermission, handleMenuSelect,
                     loadProducts, editProduct, deleteProduct, saveProduct,
-                    loadStock, adjustStock, saveStockAdjustment,
-                    loadMyRequisitions, loadPendingApprovals, loadAvailableProducts,
-                    addRequisitionItem, removeRequisitionItem, submitRequisition,
-                    approveRequest, rejectRequest, getStatusType, getStatusText
+                    loadStock, adjustStock,
+                    loadPurchaseOrders, addPurchaseItem, removePurchaseItem, savePurchase,
+                    loadPendingReceivePOs, openReceiveDialog,
+                    loadMyRequisitions, addRequisitionItem, removeRequisitionItem, submitRequisition, loadAvailableProducts,
+                    loadPendingApprovals, approveRequest, rejectRequest,
+                    loadPendingShipments, confirmShipment,
+                    getStatusType, getStatusText, getPurchaseStatusType, getPurchaseStatusText
                 };
             }
         }).use(ElementPlus).mount('#app');

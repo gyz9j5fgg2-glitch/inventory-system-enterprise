@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import engine, Base
-from app.routers import auth, inventory, requisition, approval, reports
+from app.routers import auth, inventory, requisition, approval, reports, warehouse
 
 
 @asynccontextmanager
@@ -40,6 +40,7 @@ app.include_router(inventory.router, prefix="/api/v1/inventory", tags=["库存"]
 app.include_router(requisition.router, prefix="/api/v1/requisitions", tags=["申请"])
 app.include_router(approval.router, prefix="/api/v1/approvals", tags=["审批"])
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["报表"])
+app.include_router(warehouse.router, prefix="/api/v1/warehouse", tags=["仓库管理"])
 
 
 @app.get("/health")
