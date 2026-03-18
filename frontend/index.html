@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <!-- 内容安全策略 -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://unpkg.com; font-src 'self' https://unpkg.com; img-src 'self' data:;">
     <title>企业级库存管理系统</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://unpkg.com/element-plus/dist/index.full.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
-    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <!-- 本地托管的CSS资源 -->
+    <link rel="stylesheet" href="/static/css/element-plus.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif; background: #f0f2f5; }
@@ -51,12 +52,7 @@
                     </el-form-item>
                 </el-form>
                 <div style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
-                    支持域账号登录 | LDAP集成<br><br>
-                    <strong>测试账号:</strong><br>
-                    申请人: applicant / applicant123<br>
-                    审批人: approver / approver123<br>
-                    仓库管理员: warehouse / warehouse123<br>
-                    管理员: admin / admin123
+                    支持域账号登录 | LDAP集成
                 </div>
             </div>
         </div>
@@ -324,10 +320,12 @@
                 </el-main>
             </el-container>
         </el-container>
-
-        <!-- 对话框省略，保持简洁 -->
     </div>
 
+    <!-- 本地托管的JS资源 -->
+    <script src="/static/js/vue.global.js"></script>
+    <script src="/static/js/element-plus.js"></script>
+    <script src="/static/js/axios.min.js"></script>
     <script>
         const { createApp, ref, reactive, computed } = Vue;
         const { ElMessage, ElMessageBox } = ElementPlus;
@@ -418,7 +416,6 @@
                 };
                 const editProduct = (row) => { Object.assign(productForm, row); showProductDialog.value = true; };
                 const deleteProduct = (row) => { ElMessageBox.confirm(`删除 "${row.name}"?`, '提示', { type: 'warning' }).then(() => { ElMessage.success('删除成功'); }); };
-                const saveProduct = () => { ElMessage.success('保存成功'); showProductDialog.value = false; };
 
                 const loadStock = () => { stockList.value = [{ id: 1, sku: 'P001', productName: 'A4打印纸', warehouseName: '主仓库', quantity: 50, minStock: 20 }]; };
                 const adjustStock = (row, type) => { ElMessage.success(type === 'in' ? '入库成功' : '出库成功'); };
@@ -456,7 +453,7 @@
                     myRequisitions, requisitionForm, availableProducts, pendingApprovals, pendingShipments,
                     userRoleText, userRoleType,
                     handleLogin, logout, hasPermission, handleMenuSelect,
-                    loadProducts, editProduct, deleteProduct, saveProduct,
+                    loadProducts, editProduct, deleteProduct,
                     loadStock, adjustStock,
                     loadPurchaseOrders, addPurchaseItem, removePurchaseItem, savePurchase,
                     loadPendingReceivePOs, openReceiveDialog,
