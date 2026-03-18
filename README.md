@@ -98,7 +98,9 @@ CREATE INDEX CONCURRENTLY idx_inventory_product_wh
 
 ## 文档
 
-- [部署指南](docs/DEPLOYMENT.md) - 完整的部署文档
+- [现有虚拟化平台部署](docs/EXISTING_PLATFORM_DEPLOYMENT.md) - **推荐：已有VMware/Proxmox环境**
+- [超融合架构部署](docs/HYPERCONVERGED_DEPLOYMENT.md) - 新建超融合集群
+- [部署指南](docs/DEPLOYMENT.md) - Docker Compose部署
 - [配置指南](docs/CONFIGURATION.md) - 系统配置说明
 - [数据库迁移](docs/MIGRATIONS.md) - 数据库版本管理
 
