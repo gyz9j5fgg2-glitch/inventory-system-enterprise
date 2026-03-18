@@ -16,7 +16,8 @@ from app.services.auth import (
 from app.config import settings
 
 router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+# 使用HTTPS的token URL
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="https://localhost/api/v1/auth/login")
 
 # 简单的速率限制存储（生产环境建议使用Redis）
 login_attempts = {}
@@ -58,7 +59,18 @@ async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db)
 ):
-    """用户登录 - 带速率限制"""
+    """
+    用户登录 - 带速率限制
+    生产环境必须使用HTTPS
+    """
+    # 检查是否使用HTTPS
+    if not settings.DEBUG:
+        if request.url.scheme != "https":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="必须使用HTTPS进行身份验证"
+            )
+    
     client_ip = request.client.host
     
     # 检查速率限制

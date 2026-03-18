@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Dict
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +14,11 @@ from app.services.ldap_auth import ldap_service
 from app.services.permissions import has_permission, get_role_permissions
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+# 使用HTTPS的token URL
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/api/v1/auth/login",
+    auto_error=False
+)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -31,7 +35,12 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(minutes=15)
-    to_encode.update({"exp": expire, "type": "access"})
+    to_encode.update({
+        "exp": expire,
+        "type": "access",
+        "iat": datetime.utcnow(),  # 签发时间
+        "iss": "eims-api"  # 签发者
+    })
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
@@ -39,15 +48,20 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 def create_refresh_token(data: dict):
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire, "type": "refresh"})
+    to_encode.update({
+        "exp": expire,
+        "type": "refresh",
+        "iat": datetime.utcnow(),
+        "iss": "eims-api"
+    })
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
 
 async def authenticate_user(db: AsyncSession, username: str, password: str):
     """
-    用户认证
-    优先尝试本地认证，如失败且启用了LDAP则尝试域认证
+    用户认证 - 支持本地和LDAP/AD认证
+    LDAP必须使用LDAPS (SSL/TLS)
     """
     # 1. 先尝试本地数据库认证
     result = await db.execute(select(User).where(User.username == username))
@@ -102,11 +116,26 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         detail="无效的认证凭据",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    
+    if not token:
+        raise credentials_exception
+    
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+            issuer="eims-api"  # 验证签发者
+        )
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
+        
+        # 检查token类型
+        token_type = payload.get("type")
+        if token_type != "access":
+            raise credentials_exception
+            
     except JWTError:
         raise credentials_exception
     

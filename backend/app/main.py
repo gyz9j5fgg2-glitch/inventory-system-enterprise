@@ -1,7 +1,8 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.config import settings
 from app.database import engine, Base
@@ -21,11 +22,16 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="企业级库存管理系统",
     description="Enterprise Inventory Management System API",
-    version="2.0.0",
+    version="2.0.1",
     lifespan=lifespan,
     docs_url=None,  # 禁用Swagger UI（生产环境）
     redoc_url=None   # 禁用ReDoc（生产环境）
 )
+
+
+# 生产环境强制HTTPS重定向
+if not settings.DEBUG:
+    app.add_middleware(HTTPSRedirectMiddleware)
 
 
 # 安全中间件 - 添加安全响应头
@@ -38,16 +44,18 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     # XSS保护
     response.headers["X-XSS-Protection"] = "1; mode=block"
-    # 强制HTTPS
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    # 内容安全策略
-    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
-    #  referrer策略
+    # 强制HTTPS (HSTS)
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+    # 内容安全策略 (CSP) - 只允许HTTPS
+    response.headers["Content-Security-Policy"] = "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; font-src 'self' https:; img-src 'self' data: https:; connect-src 'self' https:;"
+    # referrer策略
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # 权限策略
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
     return response
 
 
-# CORS配置 - 严格限制来源
+# CORS配置 - 严格限制来源，只允许HTTPS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -71,13 +79,14 @@ app.include_router(warehouse.router, prefix="/api/v1/warehouse", tags=["仓库�
 @app.get("/health")
 async def health_check():
     """健康检查端点"""
-    return {"status": "ok"}
+    return {"status": "ok", "version": "2.0.1"}
 
 
 @app.get("/")
 async def root():
     return {
         "message": "企业级库存管理系统 API",
-        "version": "2.0.0",
+        "version": "2.0.1",
+        "protocol": "HTTPS",
         "docs": None  # 生产环境不暴露文档地址
     }
