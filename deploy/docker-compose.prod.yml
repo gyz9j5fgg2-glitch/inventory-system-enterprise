@@ -1,0 +1,55 @@
+version: '3.8'
+
+# 生产环境覆盖配置
+
+services:
+  api:
+    environment:
+      DEBUG: "false"
+      LOG_LEVEL: WARNING
+      # 生产环境使用更多 worker
+      UVICORN_WORKERS: 8
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  celery-worker:
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+
+  postgres:
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '2'
+          memory: 4G
+
+  redis:
+    command: redis-server --appendonly yes --save 60 1000 --requirepass ${REDIS_PASSWORD:-redis123}
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G

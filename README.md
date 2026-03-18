@@ -96,11 +96,17 @@ CREATE INDEX CONCURRENTLY idx_inventory_product_wh
 | 响应时间 | P99 < 200ms |
 | 数据量 | 支持亿级记录 |
 
-## 开发文档
+## 文档
 
-- [API 文档](docs/API.md)
-- [数据库设计](docs/DB_SCHEMA.md)
-- [部署指南](docs/DEPLOYMENT.md)
+- [部署指南](docs/DEPLOYMENT.md) - 完整的部署文档
+- [配置指南](docs/CONFIGURATION.md) - 系统配置说明
+- [数据库迁移](docs/MIGRATIONS.md) - 数据库版本管理
+
+## 快速链接
+
+- **API 文档**: http://localhost/api/docs (启动后访问)
+- **前端界面**: http://localhost
+- **默认账号**: admin / admin123
 
 ## License
 
