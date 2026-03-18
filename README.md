@@ -107,6 +107,11 @@ CREATE INDEX CONCURRENTLY idx_inventory_product_wh
 | 新建超融合集群 | [超融合架构部署](docs/HYPERCONVERGED_DEPLOYMENT.md) | 6-8周 |
 | Docker Compose | [部署指南](docs/DEPLOYMENT.md) | 30分钟 |
 
+### 🔒 安全
+
+- **[安全审计报告](docs/SECURITY_AUDIT_REPORT.md)** - 漏洞扫描与修复建议
+- **[安全修复脚本](deploy/security-fix.sh)** - 自动修复高危漏洞
+
 ### 📚 其他文档
 
 - [配置指南](docs/CONFIGURATION.md) - 系统配置说明
