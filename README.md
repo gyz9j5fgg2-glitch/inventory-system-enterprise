@@ -98,11 +98,20 @@ CREATE INDEX CONCURRENTLY idx_inventory_product_wh
 
 ## 文档
 
-- [现有虚拟化平台部署](docs/EXISTING_PLATFORM_DEPLOYMENT.md) - **推荐：已有VMware/Proxmox环境**
-- [超融合架构部署](docs/HYPERCONVERGED_DEPLOYMENT.md) - 新建超融合集群
-- [部署指南](docs/DEPLOYMENT.md) - Docker Compose部署
+### 🚀 快速部署（选择适合你的方式）
+
+| 场景 | 文档 | 预计时间 |
+|------|------|----------|
+| **已有虚拟化 + Ubuntu** | [Ubuntu部署指南](docs/UBUNTU_DEPLOYMENT.md) | **1小时** ⭐推荐 |
+| 已有虚拟化 + CentOS | [现有平台部署](docs/EXISTING_PLATFORM_DEPLOYMENT.md) | 1.5小时 |
+| 新建超融合集群 | [超融合架构部署](docs/HYPERCONVERGED_DEPLOYMENT.md) | 6-8周 |
+| Docker Compose | [部署指南](docs/DEPLOYMENT.md) | 30分钟 |
+
+### 📚 其他文档
+
 - [配置指南](docs/CONFIGURATION.md) - 系统配置说明
 - [数据库迁移](docs/MIGRATIONS.md) - 数据库版本管理
+- [业务流程](docs/BUSINESS_FLOW.md) - 申请/审批/发货/采购流程
 
 ## 快速链接
 
